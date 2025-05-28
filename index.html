@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Grouped Mean Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-4xl bg-white shadow-lg rounded-lg p-4 md:p-8">
+    <h1 class="text-2xl md:text-3xl font-bold mb-6 text-blue-700 text-center">
+      Grouped Data Mean Calculator
+    </h1>
+
+    <!-- Inputs -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+      <div>
+        <label class="block text-gray-700 mb-1">Lower Limit (Start)</label>
+        <input type="number" id="lowerLimit" class="w-full p-2 border rounded-md" placeholder="e.g. 10">
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-1">Upper Limit (End)</label>
+        <input type="number" id="upperLimit" class="w-full p-2 border rounded-md" placeholder="e.g. 60">
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-1">Class Width (h)</label>
+        <input type="number" id="classWidth" class="w-full p-2 border rounded-md" placeholder="e.g. 10">
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-1">Frequencies (comma-separated)</label>
+        <input type="text" id="frequencies" class="w-full p-2 border rounded-md" placeholder="e.g. 5,8,12,7,3">
+      </div>
+    </div>
+
+    <!-- Mean Method Selection -->
+    <div class="mb-4 flex flex-col md:flex-row gap-4 items-center">
+      <label class="font-semibold text-gray-700">Select Mean Method:</label>
+      <select id="meanMethod" class="p-2 border rounded-md flex-1" onchange="updateAssumedMeanOptions()">
+        <option value="direct">Direct Method</option>
+        <option value="assumed">Assumed Mean Method</option>
+        <option value="step">Step Deviation Method</option>
+      </select>
+      <!-- Assumed Mean xi selection -->
+      <div id="assumedMeanDiv" class="flex flex-row gap-2 items-center hidden">
+        <label class="text-gray-700">Assumed Mean (A = xi):</label>
+        <select id="assumedMeanSelect" class="p-2 border rounded-md"></select>
+      </div>
+    </div>
+
+    <button onclick="autoCalculate()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition mb-4 w-full md:w-auto">
+      Calculate Mean & Show Table/Graph
+    </button>
+
+    <!-- Results -->
+    <div id="resultSection" class="hidden">
+      <div class="mb-2 text-lg font-semibold text-blue-700">
+        Mean: <span id="meanResult"></span>
+      </div>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border border-gray-200">
+          <thead>
+            <tr class="bg-gray-50 text-xs md:text-sm">
+              <th class="border p-2">Interval</th>
+              <th class="border p-2">fi</th>
+              <th class="border p-2">xi</th>
+              <th id="diHeader" class="border p-2 hidden">di = xi - A</th>
+              <th id="uiHeader" class="border p-2 hidden">ui = di / h</th>
+              <th id="fixiHeader" class="border p-2">fi·xi</th>
+              <th id="fidiHeader" class="border p-2 hidden">fi·di</th>
+              <th id="fiuiHeader" class="border p-2 hidden">fi·ui</th>
+            </tr>
+          </thead>
+          <tbody id="resultTableBody"></tbody>
+          <tfoot>
+            <tr class="bg-gray-100 font-bold">
+              <td class="border p-2">Σ</td>
+              <td class="border p-2" id="sumFi"></td>
+              <td class="border p-2"></td>
+              <td class="border p-2" id="sumDi" class="hidden"></td>
+              <td class="border p-2" id="sumUi" class="hidden"></td>
+              <td class="border p-2" id="sumFixi"></td>
+              <td class="border p-2" id="sumFidi" class="hidden"></td>
+              <td class="border p-2" id="sumFiui" class="hidden"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div>
+        <canvas id="frequencyChart"></canvas>
+      </div>
+    </div>
+
+    <script>
+      let intervals = [];
+      let classMarks = [];
+      let myChart = null;
+
+      function autoCalculate() {
+        // Read inputs
+        const lower = parseFloat(document.getElementById('lowerLimit').value);
+        const upper = parseFloat(document.getElementById('upperLimit').value);
+        const h = parseFloat(document.getElementById('classWidth').value);
+        const freqStr = document.getElementById('frequencies').value;
+        const frequencies = freqStr.split(',').map(f => parseFloat(f.trim())).filter(f => !isNaN(f));
+        const method = document.getElementById('meanMethod').value;
+
+        // Validate
+        if (isNaN(lower) || isNaN(upper) || isNaN(h) || lower >= upper || h <= 0) {
+          alert('Please enter valid lower/upper/class width values.');
+          return;
+        }
+        if (frequencies.length === 0 || frequencies.some(f => isNaN(f) || f < 0)) {
+          alert('Please enter valid frequencies (comma-separated, non-negative numbers).');
+          return;
+        }
+
+        // Generate intervals and class marks
+        intervals = [];
+        classMarks = [];
+        let currentLower = lower;
+        while (currentLower < upper && intervals.length < frequencies.length) {
+          let currentUpper = Math.min(currentLower + h, upper);
+          intervals.push({ lower: currentLower, upper: currentUpper });
+          classMarks.push((currentLower + currentUpper) / 2);
+          currentLower = currentUpper;
+        }
+        // Adjust if frequency count doesn't match interval count
+        if (frequencies.length !== intervals.length) {
+          alert(`Number of frequencies (${frequencies.length}) does not match number of intervals (${intervals.length}).`);
+          return;
+        }
+
+        // Populate assumed mean options if needed
+        updateAssumedMeanOptions();
+
+        // Calculate mean based on method
+        let mean = 0, sumFi = 0, sumFixi = 0, sumDi = 0, sumFidi = 0, sumUi = 0, sumFiui = 0;
+        let diArr = [], fidiArr = [], uiArr = [], fiuiArr = [], fixiArr = [];
+        let assumedMean = parseFloat(document.getElementById('assumedMeanSelect')?.value);
+
+        // Direct Method
+        if (method === 'direct') {
+          for (let i = 0; i < frequencies.length; i++) {
+            sumFi += frequencies[i];
+            let fixi = frequencies[i] * classMarks[i];
+            sumFixi += fixi;
+            fixiArr.push(fixi);
+          }
+          mean = sumFixi / sumFi;
+        }
+        // Assumed Mean Method
+        else if (method === 'assumed') {
+          if (isNaN(assumedMean)) {
+            alert('Please select the assumed mean (xi).');
+            return;
+          }
+          for (let i = 0; i < frequencies.length; i++) {
+            let di = classMarks[i] - assumedMean;
+            let fidi = frequencies[i] * di;
+            let fixi = frequencies[i] * classMarks[i];
+            sumFi += frequencies[i];
+            sumDi += di;
+            sumFidi += fidi;
+            sumFixi += fixi;
+            diArr.push(di);
+            fidiArr.push(fidi);
+            fixiArr.push(fixi);
+          }
+          mean = assumedMean + (sumFidi / sumFi);
+        }
+        // Step Deviation Method
+        else if (method === 'step') {
+          if (isNaN(assumedMean)) {
+            alert('Please select the assumed mean (xi).');
+            return;
+          }
+          for (let i = 0; i < frequencies.length; i++) {
+            let di = classMarks[i] - assumedMean;
+            let ui = di / h;
+            let fiui = frequencies[i] * ui;
+            let fixi = frequencies[i] * classMarks[i];
+            sumFi += frequencies[i];
+            sumDi += di;
+            sumUi += ui;
+            sumFiui += fiui;
+            sumFixi += fixi;
+            diArr.push(di);
+            uiArr.push(ui);
+            fiuiArr.push(fiui);
+            fixiArr.push(fixi);
+          }
+          mean = assumedMean + (sumFiui / sumFi) * h;
+        }
+
+        // Show result section
+        document.getElementById('resultSection').classList.remove('hidden');
+        document.getElementById('meanResult').textContent = mean.toFixed(2);
+
+        // Build result table
+        let tableRows = '';
+        for (let i = 0; i < frequencies.length; i++) {
+          tableRows += `<tr class="text-center">
+            <td class="border p-2">${intervals[i].lower} - ${intervals[i].upper}</td>
+            <td class="border p-2">${frequencies[i]}</td>
+            <td class="border p-2">${classMarks[i]}</td>
+            <td class="border p-2 ${method === 'direct' ? 'hidden' : ''}">${diArr[i]?.toFixed(2) ?? ''}</td>
+            <td class="border p-2 ${method === 'step' ? '' : 'hidden'}">${uiArr[i]?.toFixed(2) ?? ''}</td>
+            <td class="border p-2">${fixiArr[i]?.toFixed(2) ?? ''}</td>
+            <td class="border p-2 ${method === 'assumed' ? '' : 'hidden'}">${fidiArr[i]?.toFixed(2) ?? ''}</td>
+            <td class="border p-2 ${method === 'step' ? '' : 'hidden'}">${fiuiArr[i]?.toFixed(2) ?? ''}</td>
+          </tr>`;
+        }
+        document.getElementById('resultTableBody').innerHTML = tableRows;
+        document.getElementById('sumFi').textContent = sumFi;
+        document.getElementById('sumDi').textContent = method !== 'direct' ? sumDi.toFixed(2) : '';
+        document.getElementById('sumUi').textContent = method === 'step' ? sumUi.toFixed(2) : '';
+        document.getElementById('sumFixi').textContent = sumFixi.toFixed(2);
+        document.getElementById('sumFidi').textContent = method === 'assumed' ? sumFidi.toFixed(2) : '';
+        document.getElementById('sumFiui').textContent = method === 'step' ? sumFiui.toFixed(2) : '';
+
+        // Show/hide columns as needed
+        document.getElementById('diHeader').classList.toggle('hidden', method === 'direct');
+        document.getElementById('uiHeader').classList.toggle('hidden', method !== 'step');
+        document.getElementById('fixiHeader').classList.remove('hidden');
+        document.getElementById('fidiHeader').classList.toggle('hidden', method !== 'assumed');
+        document.getElementById('fiuiHeader').classList.toggle('hidden', method !== 'step');
+        document.getElementById('sumDi').classList.toggle('hidden', method === 'direct');
+        document.getElementById('sumUi').classList.toggle('hidden', method !== 'step');
+        document.getElementById('sumFidi').classList.toggle('hidden', method !== 'assumed');
+        document.getElementById('sumFiui').classList.toggle('hidden', method !== 'step');
+
+        // Draw frequency polygon with intervals as labels!
+        drawChart(intervals, frequencies);
+      }
+
+      function updateAssumedMeanOptions() {
+        const method = document.getElementById('meanMethod').value;
+        const assumedDiv = document.getElementById('assumedMeanDiv');
+        const assumedSelect = document.getElementById('assumedMeanSelect');
+        if (method === 'assumed' || method === 'step') {
+          // Show selection and populate
+          assumedDiv.classList.remove('hidden');
+          assumedSelect.innerHTML = '';
+          if (classMarks.length > 0) {
+            classMarks.forEach((xi, idx) => {
+              const opt = document.createElement('option');
+              opt.value = xi;
+              opt.text = `xi = ${xi}`;
+              assumedSelect.appendChild(opt);
+            });
+            // Select middle xi by default
+            assumedSelect.selectedIndex = Math.floor(classMarks.length / 2);
+          }
+        } else {
+          assumedDiv.classList.add('hidden');
+        }
+      }
+
+      // FIXED drawChart: uses intervals as labels
+      function drawChart(intervals, frequencies) {
+        const ctx = document.getElementById('frequencyChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        // Use class intervals as labels
+        const intervalLabels = intervals.map(interval => `${interval.lower}-${interval.upper}`);
+
+        myChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: intervalLabels,
+            datasets: [{
+              label: 'Frequency Polygon',
+              data: frequencies,
+              borderColor: 'rgb(59,130,246)',
+              backgroundColor: 'rgba(59,130,246,0.1)',
+              tension: 0.3,
+              fill: false,
+              pointRadius: 4,
+              pointBackgroundColor: 'rgb(59,130,246)'
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              x: { title: { display: true, text: 'Class Interval' } },
+              y: { title: { display: true, text: 'Frequency (fi)' }, beginAtZero: true }
+            }
+          }
+        });
+      }
+    </script>
+  </div>
+</body>
+</html>
