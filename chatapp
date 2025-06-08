@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WhatsApp Clone</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+  <style>
+    /* Scroll message container bottom */
+    #messages {
+      scroll-behavior: smooth;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+
+  <!-- Login Screen -->
+  <div id="loginScreen" class="flex flex-col items-center justify-center h-screen">
+    <div class="bg-white p-6 rounded shadow-md w-80 text-center">
+      <i class="fab fa-whatsapp text-green-500 text-5xl mb-4"></i>
+      <h2 class="text-2xl font-bold mb-6">Login with Google</h2>
+      <button
+        id="loginBtn"
+        class="bg-green-500 text-white px-5 py-3 rounded w-full flex items-center justify-center gap-3 hover:bg-green-600 transition"
+      >
+        <i class="fab fa-google"></i> Sign in with Google
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Chat App -->
+  <div id="chatApp" class="hidden flex flex-col h-screen">
+    <header
+      class="bg-green-600 text-white flex items-center justify-between p-4"
+    >
+      <div class="flex items-center gap-3">
+        <img
+          id="userPhoto"
+          class="w-10 h-10 rounded-full border-2 border-white"
+          alt="User Photo"
+          src=""
+        />
+        <h1 id="userName" class="font-semibold text-lg"></h1>
+      </div>
+      <button
+        id="signOutBtn"
+        title="Sign Out"
+        class="text-white text-xl hover:text-red-400"
+      >
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </header>
+
+    <!-- Add Contact -->
+    <div class="flex p-4 gap-2 bg-white">
+      <input
+        id="contactEmail"
+        type="email"
+        placeholder="Contact's Email"
+        class="flex-1 border rounded px-3 py-2"
+      />
+      <input
+        id="contactName"
+        type="text"
+        placeholder="Contact's Name"
+        class="flex-1 border rounded px-3 py-2"
+      />
+      <button
+        id="addContactBtn"
+        class="bg-green-500 text-white px-4 rounded hover:bg-green-600 transition"
+      >
+        <i class="fas fa-user-plus"></i> Add
+      </button>
+    </div>
+
+    <!-- Contact List -->
+    <main
+      id="contactsList"
+      class="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3"
+    ></main>
+  </div>
+
+  <!-- Chat Window -->
+  <div
+    id="chatWindow"
+    class="hidden flex flex-col h-screen bg-gray-100"
+  >
+    <header
+      class="bg-green-600 text-white flex items-center gap-3 p-4"
+    >
+      <button
+        id="backBtn"
+        class="text-white text-xl hover:text-green-300"
+        title="Back to contacts"
+      >
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <img
+        id="chatUserPhoto"
+        alt="Chat User Photo"
+        class="w-10 h-10 rounded-full border-2 border-white"
+        src=""
+      />
+      <h2 id="chatUserName" class="font-semibold text-lg"></h2>
+    </header>
+
+    <section
+      id="messages"
+      class="flex-1 p-4 overflow-y-auto flex flex-col gap-2"
+    ></section>
+
+    <footer class="p-4 bg-white flex gap-2 items-center">
+      <input
+        id="messageInput"
+        type="text"
+        placeholder="Type your message..."
+        class="flex-1 border rounded px-4 py-2"
+      />
+      <button
+        id="sendMsgBtn"
+        class="text-green-600 text-2xl hover:text-green-800"
+        title="Send message"
+      >
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </footer>
+  </div>
+
+  <script>
+    // === Your Firebase Config ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyBzWwQpbPrHG9OoJgq8XGwXsncNAVSw8SA",
+  authDomain: "d-game-aa338.firebaseapp.com",
+  databaseURL: "https://d-game-aa338-default-rtdb.firebaseio.com",
+  projectId: "d-game-aa338",
+  storageBucket: "d-game-aa338.appspot.com",
+  messagingSenderId: "537592818882",
+  appId: "1:537592818882:web:8e1e2397ad22813b165f5b",
+  measurementId: "G-ZMV9QKR976"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // Elements
+    const loginScreen = document.getElementById("loginScreen");
+    const chatApp = document.getElementById("chatApp");
+    const chatWindow = document.getElementById("chatWindow");
+
+    const userNameEl = document.getElementById("userName");
+    const userPhotoEl = document.getElementById("userPhoto");
+    const signOutBtn = document.getElementById("signOutBtn");
+
+    const contactEmailInput = document.getElementById("contactEmail");
+    const contactNameInput = document.getElementById("contactName");
+    const addContactBtn = document.getElementById("addContactBtn");
+    const contactsListEl = document.getElementById("contactsList");
+
+    const backBtn = document.getElementById("backBtn");
+    const chatUserPhoto = document.getElementById("chatUserPhoto");
+    const chatUserName = document.getElementById("chatUserName");
+    const messagesEl = document.getElementById("messages");
+    const messageInput = document.getElementById("messageInput");
+    const sendMsgBtn = document.getElementById("sendMsgBtn");
+
+    let currentUser = null;
+    let currentChatUser = null;
+    let currentChatId = null;
+
+    // Generate consistent chat ID from two UIDs (sorted)
+    function generateChatId(uid1, uid2) {
+      return uid1 < uid2 ? uid1 + "_" + uid2 : uid2 + "_" + uid1;
+    }
+
+    // Login with Google
+    document.getElementById("loginBtn").onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    };
+
+    // Sign out
+    signOutBtn.onclick = () => auth.signOut();
+
+    // Auth state change listener
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = {
+          uid: btoa(user.email),
+          email: user.email,
+          name: user.displayName,
+          photo: user.photoURL || "https://via.placeholder.com/150"
+        };
+
+        // Save user data to DB (users node)
+        await db.ref("users/" + currentUser.uid).set({
+          email: currentUser.email,
+          name: currentUser.name,
+          photo: currentUser.photo,
+        });
+
+        loginScreen.classList.add("hidden");
+        chatWindow.classList.add("hidden");
+        chatApp.classList.remove("hidden");
+
+        userNameEl.textContent = currentUser.name;
+        userPhotoEl.src = currentUser.photo;
+
+        loadContacts();
+      } else {
+        currentUser = null;
+        chatApp.classList.add("hidden");
+        chatWindow.classList.add("hidden");
+        loginScreen.classList.remove("hidden");
+      }
+    });
+
+    // Add contact to user's contacts list
+    addContactBtn.onclick = async () => {
+      const email = contactEmailInput.value.trim().toLowerCase();
+      const name = contactNameInput.value.trim();
+      if (!email || !name) {
+        alert("Fill both email and name!");
+        return;
+      }
+      const contactUid = btoa(email);
+      // Save under contacts/{currentUser.uid}/{contactUid}
+      await db.ref("contacts/" + currentUser.uid + "/" + contactUid).set({
+        email,
+        name,
+        addedAt: Date.now()
+      });
+      contactEmailInput.value = "";
+      contactNameInput.value = "";
+      loadContacts();
+    };
+
+    // Load contacts list for current user
+    async function loadContacts() {
+      contactsListEl.innerHTML = "<p class='text-center text-gray-500'>Loading contacts...</p>";
+      const snapshot = await db.ref("contacts/" + currentUser.uid).once("value");
+      contactsListEl.innerHTML = "";
+      if (!snapshot.exists()) {
+        contactsListEl.innerHTML = "<p class='text-center text-gray-500'>No contacts added yet.</p>";
+        return;
+      }
+      snapshot.forEach((childSnap) => {
+        const contact = childSnap.val();
+        const contactUid = childSnap.key;
+
+        const card = document.createElement("div");
+        card.className =
+          "flex justify-between items-center bg-white rounded shadow p-3 cursor-pointer hover:bg-green-100 transition";
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <i class="fas fa-user-circle text-3xl text-green-600"></i>
+            <div>
+              <p class="font-semibold">${contact.name}</p>
+              <p class="text-xs text-gray-500">${contact.email}</p>
+            </div>
+          </div>
+          <i class="fas fa-comment-alt text-green-600"></i>
+        `;
+        card.onclick = () => openChat(contactUid, contact);
+        contactsListEl.appendChild(card);
+      });
+    }
+
+    // Open chat with a contact
+    async function openChat(contactUid, contact) {
+      currentChatUser = { uid: contactUid, ...contact };
+      currentChatId = generateChatId(currentUser.uid, currentChatUser.uid);
+
+      chatApp.classList.add("hidden");
+      chatWindow.classList.remove("hidden");
+
+      chatUserName.textContent = currentChatUser.name;
+
+      // Load contact photo from users node or fallback icon
+      const userSnap = await db.ref("users/" + currentChatUser.uid).once("value");
+      if (userSnap.exists()) {
+        chatUserPhoto.src = userSnap.val().photo || "https://via.placeholder.com/150";
+      } else {
+        chatUserPhoto.src = "https://via.placeholder.com/150";
+      }
+
+      messageInput.value = "";
+      messagesEl.innerHTML = "";
+
+      // Listen for chat messages
+      db.ref("messages/" + currentChatId).off(); // detach old listeners
+      db.ref("messages/" + currentChatId).on("child_added", (snap) => {
+        const msg = snap.val();
+        displayMessage(msg);
+      });
+
+      scrollMessagesToBottom();
+    }
+
+    // Back to contacts list
+    backBtn.onclick = () => {
+      chatWindow.classList.add("hidden");
+      chatApp.classList.remove("hidden");
+      db.ref("messages/" + currentChatId).off(); // stop listening to current chat
+      currentChatUser = null;
+      currentChatId = null;
+    };
+
+    // Display a message in the chat window
+    function displayMessage(msg) {
+      const div = document.createElement("div");
+      div.className =
+        "max-w-[70%] px-4 py-2 rounded-md flex flex-col";
+      if (msg.sender === currentUser.uid) {
+        div.classList.add("bg-green-300", "self-end", "ml-auto", "text-right");
+      } else {
+        div.classList.add("bg-white", "self-start", "mr-auto", "text-left");
+      }
+
+      // Check if message is text or file (expand for files/images later)
+      if (msg.type === "text") {
+        div.innerHTML = `
+          <p>${escapeHtml(msg.text)}</p>
+          <span class="text-xs text-gray-600 mt-1">${new Date(msg.time).toLocaleTimeString()}</span>
+        `;
+      } else if (msg.type === "image") {
+        div.innerHTML = `
+          <img src="${msg.url}" alt="Image" class="max-w-xs rounded" />
+          <span class="text-xs text-gray-600 mt-1">${new Date(msg.time).toLocaleTimeString()}</span>
+        `;
+      } else {
+        div.innerHTML = `
+          <p>Unsupported message type</p>
+          <span class="text-xs text-gray-600 mt-1">${new Date(msg.time).toLocaleTimeString()}</span>
+        `;
+      }
+
+      messagesEl.appendChild(div);
+      scrollMessagesToBottom();
+    }
+
+    // Escape HTML in text to avoid XSS
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Scroll messages container to bottom
+    function scrollMessagesToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    // Send message
+    sendMsgBtn.onclick = sendMessage;
+    messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    function sendMessage() {
+      if (!currentChatId) return;
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      const messageData = {
+        sender: currentUser.uid,
+        type: "text",
+        text: text,
+        time: Date.now(),
+      };
+
+      db.ref("messages/" + currentChatId)
+        .push(messageData)
+        .then(() => {
+          messageInput.value = "";
+        })
+        .catch((err) => {
+          alert("Error sending message: " + err.message);
+        });
+    }
+  </script>
+</body>
+</html>
