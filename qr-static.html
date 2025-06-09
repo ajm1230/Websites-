@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UPI Payment Page</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- QR Code Generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center px-4">
+
+  <div class="bg-white p-6 rounded-xl shadow-lg max-w-md w-full space-y-6 text-center">
+    <h2 class="text-2xl font-bold text-blue-600">UPI Payment</h2>
+
+    <div id="paymentInfo" class="space-y-2 hidden">
+      <p><strong>UPI ID:</strong> <span id="upiId">--</span></p>
+      <p><strong>Amount:</strong> ₹<span id="amount">--</span></p>
+    </div>
+
+    <a id="upiLink" href="#" target="_blank" class="block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-xl hidden">
+      Open in UPI App
+    </a>
+
+    <button id="shareBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl hidden">
+      Share Payment Link
+    </button>
+
+    <textarea id="copyLink" class="w-full mt-4 text-sm p-2 border rounded hidden" readonly></textarea>
+
+<div id="qrWrapper" class="mt-4 hidden">
+  <p class="text-sm text-gray-600 mb-2">Scan to pay:</p>
+  <canvas id="qrcode" class="mx-auto"></canvas>
+</div>
+
+    <p id="loading" class="text-gray-500">Loading payment info...</p>
+  </div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+  <script>
+      // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBDyWxu0__kryrFX5cVv2zeLH--u0jwi1o",
+      authDomain: "apps1-7adcf.firebaseapp.com",
+      databaseURL: "https://apps1-7adcf-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "apps1-7adcf",
+      storageBucket: "apps1-7adcf.appspot.com",
+      messagingSenderId: "242910695142",
+      appId: "1:242910695142:web:a81098c8dcbdaaf0ddf527",
+      measurementId: "G-41SMZKKZ7H"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  
+    // Real-time listener
+    db.ref("upiData").on("value", snapshot => {
+      const data = snapshot.val();
+      if (data && data.upiId && data.amount) {
+        const upiId = data.upiId;
+        const amount = data.amount;
+        const upiUrl = `upi://pay?pa=${upiId}&am=${amount}&cu=INR`;
+
+        // Update UI
+        document.getElementById("upiId").textContent = upiId;
+        document.getElementById("amount").textContent = amount;
+        document.getElementById("upiLink").href = upiUrl;
+        document.getElementById("copyLink").value = upiUrl;
+
+        document.getElementById("paymentInfo").classList.remove("hidden");
+        document.getElementById("upiLink").classList.remove("hidden");
+        document.getElementById("shareBtn").classList.remove("hidden");
+        document.getElementById("qrWrapper").classList.remove("hidden");
+        document.getElementById("loading").classList.add("hidden");
+
+        // Generate QR code
+        
+        document.getElementById("qrWrapper").classList.remove("hidden");
+        
+               const canvas = document.getElementById("qrcode");
+        QRCode.toCanvas(canvas, upiUrl, { width: 200 }, function (err) {
+          if (err) {
+            console.error("QR Code generation error:", err);
+          } else {
+            console.log("QR Code generated.");
+          }
+        });
+      } else {
+        document.getElementById("loading").textContent = "Payment info not found.";
+      }
+    });
+
+    // Share functionality
+    document.getElementById("shareBtn").addEventListener("click", async () => {
+      const shareData = {
+        title: "UPI Payment Page",
+        text: "Pay using this UPI payment link:",
+        url: window.location.href
+      };
+
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData);
+        } catch (err) {
+          alert("Sharing was canceled or failed.");
+        }
+      } else {
+        navigator.clipboard.writeText(window.location.href);
+        alert("Link copied! Share it manually.");
+      }
+    });
+  </script>
+</body>
+  </html>
