@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin UPI QR Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 p-6">
+
+  <div class="max-w-xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-4">🔐 Admin UPI Manager</h1>
+
+    <div id="authSection" class="mb-4">
+      <button id="loginBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Login with Google</button>
+      <button id="logoutBtn" class="hidden bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Sign Out</button>
+    </div>
+
+    <div id="adminPanel" class="hidden">
+      <label class="block mb-2">UPI ID</label>
+      <input type="text" id="upiId" class="w-full border rounded px-3 py-2 mb-4">
+
+      <label class="block mb-2">Amount</label>
+      <input type="number" id="amount" class="w-full border rounded px-3 py-2 mb-4">
+
+      <div class="flex gap-2 mb-4">
+        <button id="saveBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Save</button>
+        <button id="updateBtn" class="hidden bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Update</button>
+      </div>
+
+      <div id="status" class="text-sm text-gray-600 mb-4"></div>
+
+      <div class="mt-6">
+        <h2 class="text-lg font-semibold mb-2">Generated QR Code:</h2>
+        <div id="qrCode"></div>
+      </div>
+    </div>
+
+    <div id="notAdminMsg" class="hidden text-red-500 font-semibold">❌ You are not an admin.</div>
+  </div>
+
+  <!-- QR Code Generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+  <script>
+    // Firebase config - replace with your project config
+    const firebaseConfig = {
+       apiKey: "AIzaSyBDyWxu0__kryrFX5cVv2zeLH--u0jwi1o",
+  authDomain: "apps1-7adcf.firebaseapp.com",
+  databaseURL: "https://apps1-7adcf-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apps1-7adcf",
+  storageBucket: "apps1-7adcf.appspot.com",
+  messagingSenderId: "242910695142",
+  appId: "1:242910695142:web:a81098c8dcbdaaf0ddf527",
+  measurementId: "G-41SMZKKZ7H"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+    const dataRef = database.ref("upiData");
+
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const adminPanel = document.getElementById("adminPanel");
+    const notAdminMsg = document.getElementById("notAdminMsg");
+
+    const upiIdInput = document.getElementById("upiId");
+    const amountInput = document.getElementById("amount");
+    const saveBtn = document.getElementById("saveBtn");
+    const updateBtn = document.getElementById("updateBtn");
+    const status = document.getElementById("status");
+    const qrCodeDiv = document.getElementById("qrCode");
+
+    loginBtn.onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    };
+
+    logoutBtn.onclick = () => {
+      auth.signOut();
+    };
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loginBtn.classList.add("hidden");
+        logoutBtn.classList.remove("hidden");
+
+        // Try reading the data to confirm admin rights
+        dataRef.once("value")
+          .then(snapshot => {
+            const data = snapshot.val();
+            if (data) {
+              upiIdInput.value = data.upiId || "";
+              amountInput.value = data.amount || "";
+              generateQR(data.upiId, data.amount);
+              updateBtn.classList.remove("hidden");
+              saveBtn.classList.add("hidden");
+            } else {
+              updateBtn.classList.add("hidden");
+              saveBtn.classList.remove("hidden");
+            }
+            adminPanel.classList.remove("hidden");
+            notAdminMsg.classList.add("hidden");
+          })
+          .catch(() => {
+            // User is not admin (access denied by rules)
+            adminPanel.classList.add("hidden");
+            notAdminMsg.classList.remove("hidden");
+          });
+
+      } else {
+        adminPanel.classList.add("hidden");
+        loginBtn.classList.remove("hidden");
+        logoutBtn.classList.add("hidden");
+        notAdminMsg.classList.add("hidden");
+      }
+    });
+
+    function generateQR(upiId, amount) {
+      const upiLink = `upi://pay?pa=${upiId}&am=${amount}&cu=INR`;
+      qrCodeDiv.innerHTML = ""; // clear old
+      QRCode.toCanvas(upiLink, { width: 200 }, (err, canvas) => {
+        if (!err) {
+          qrCodeDiv.appendChild(canvas);
+        }
+      });
+    }
+
+    saveBtn.onclick = () => {
+      const upiId = upiIdInput.value.trim();
+      const amount = amountInput.value.trim();
+      if (!upiId || !amount) {
+        status.textContent = "Please enter UPI ID and amount.";
+        return;
+      }
+
+      dataRef.set({ upiId, amount })
+        .then(() => {
+          status.textContent = "✅ Data saved.";
+          updateBtn.classList.remove("hidden");
+          saveBtn.classList.add("hidden");
+          generateQR(upiId, amount);
+        })
+        .catch(() => {
+          status.textContent = "❌ Access denied. You are not admin.";
+        });
+    };
+
+    updateBtn.onclick = () => {
+      const upiId = upiIdInput.value.trim();
+      const amount = amountInput.value.trim();
+      if (!upiId || !amount) {
+        status.textContent = "Please enter UPI ID and amount.";
+        return;
+      }
+
+      dataRef.update({ upiId, amount })
+        .then(() => {
+          status.textContent = "✅ Data updated.";
+          generateQR(upiId, amount);
+        })
+        .catch(() => {
+          status.textContent = "❌ Access denied.";
+        });
+    };
+  </script>
+</body>
+</html>
