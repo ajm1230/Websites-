@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Firebase Push Demo</title>
+
+  <!-- ✅ Firebase SDKs - Must come first -->
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-messaging-compat.js"></script>
+</head>
+<body>
+  <h1>Enable Push Notifications</h1>
+  <button id="enableBtn">Enable Notifications</button>
+
+  <!-- ✅ Place your custom script AFTER Firebase SDKs -->
+  <script>
+    // ✅ Replace with your own Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAYq4RhrbHNoJlX4TP0PonQNuPGE5-nc58",
+    authDomain: "first-project-4ba00.firebaseapp.com",
+    databaseURL: "https://first-project-4ba00-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "first-project-4ba00",
+    storageBucket: "first-project-4ba00.appspot.com",
+    messagingSenderId: "679004245122",
+    appId: "1:679004245122:web:2b610906456030f74cf89b",
+    measurementId: "G-MPP649FMMM"
+    };
+
+    // ✅ Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    let messaging;
+
+    // ✅ Register service worker first
+    navigator.serviceWorker.register("/firebase-messaging-sw.js")
+      .then((registration) => {
+        messaging = firebase.messaging();
+        messaging.useServiceWorker(registration);
+        document.getElementById("enableBtn").disabled = false;
+      })
+      .catch(err => console.error("SW registration failed", err));
+
+    // ✅ Handle permission + token
+    document.getElementById("enableBtn").addEventListener("click", async () => {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const token = await messaging.getToken({
+          vapidKey: "BNY_0LCuB88zlU-y2u4ckqe7vFjsu0hMfRsm_TVPVVBgZxhNNsUX-2SDSzztndlnRZe0-A451K6vS1FLJLcqApE"
+        });
+        console.log("FCM Token:", token);
+        alert("Notifications enabled");
+      } else {
+        alert("Permission denied");
+      }
+    });
+
+    document.getElementById("enableBtn").disabled = true;
+  </script>
+</body>
+</html>
