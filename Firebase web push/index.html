@@ -9,6 +9,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-messaging-compat.js"></script>
 </head>
 <body>
+  2
   <h1>Enable Push Notifications</h1>
   <button id="enableBtn">Enable Notifications</button>
 
@@ -31,7 +32,7 @@
     let messaging;
 
     // ✅ Register service worker first
-    navigator.serviceWorker.register("/firebase-messaging-sw.js")
+    navigator.serviceWorker.register("/Websites-/firebase-messaging-sw.js")
       .then((registration) => {
         messaging = firebase.messaging();
         messaging.useServiceWorker(registration);
