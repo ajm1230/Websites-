@@ -2,59 +2,60 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Firebase Push Demo</title>
+  <title>Firebase Push Notifications</title>
 
-  <!-- ✅ Firebase SDKs - Must come first -->
+  <!-- Firebase SDKs (must come first) -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-messaging-compat.js"></script>
 </head>
 <body>
-  3
-  <h1>Enable Push Notifications</h1>
-  <button id="enableBtn">Enable Notifications</button>
+  <h1>Push Notifications Demo</h1>
+  <button id="enableBtn" disabled>Enable Notifications</button>
+  <p id="tokenDisplay" style="word-break: break-all; font-family: monospace;"></p>
 
-  <!-- ✅ Place your custom script AFTER Firebase SDKs -->
   <script>
-    // ✅ Replace with your own Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyAYq4RhrbHNoJlX4TP0PonQNuPGE5-nc58",
-    authDomain: "first-project-4ba00.firebaseapp.com",
-    databaseURL: "https://first-project-4ba00-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "first-project-4ba00",
-    storageBucket: "first-project-4ba00.appspot.com",
-    messagingSenderId: "679004245122",
-    appId: "1:679004245122:web:2b610906456030f74cf89b",
-    measurementId: "G-MPP649FMMM"
-    };
+    window.onload = async () => {
+      // ✅ Your Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyAYq4RhrbHNoJlX4TP0PonQNuPGE5-nc58",
+        authDomain: "first-project-4ba00.firebaseapp.com",
+        databaseURL: "https://first-project-4ba00-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "first-project-4ba00",
+        storageBucket: "first-project-4ba00.appspot.com",
+        messagingSenderId: "679004245122",
+        appId: "1:679004245122:web:2b610906456030f74cf89b",
+        measurementId: "G-MPP649FMMM"
+      };
 
-    // ✅ Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    let messaging;
+      // ✅ Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+      const messaging = firebase.messaging();
 
-    // ✅ Register service worker first
-    navigator.serviceWorker.register("Websites-/firebase-messaging-sw.js")
-      .then((registration) => {
-        messaging = firebase.messaging();
+      try {
+        // ✅ Correct service worker path
+        const registration = await navigator.serviceWorker.register("/Websites-/firebase-messaging-sw.js");
         messaging.useServiceWorker(registration);
         document.getElementById("enableBtn").disabled = false;
-      })
-      .catch(err => console.error("SW registration failed", err));
-
-    // ✅ Handle permission + token
-    document.getElementById("enableBtn").addEventListener("click", async () => {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        const token = await messaging.getToken({
-          vapidKey: "BNY_0LCuB88zlU-y2u4ckqe7vFjsu0hMfRsm_TVPVVBgZxhNNsUX-2SDSzztndlnRZe0-A451K6vS1FLJLcqApE"
-        });
-        console.log("FCM Token:", token);
-        alert("Notifications enabled");
-      } else {
-        alert("Permission denied");
+      } catch (err) {
+        console.error("Service worker registration failed:", err);
+        return;
       }
-    });
 
-    document.getElementById("enableBtn").disabled = true;
+      // ✅ Ask for permission + show token
+      document.getElementById("enableBtn").addEventListener("click", async () => {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+          const token = await messaging.getToken({
+            vapidKey: "BNY_0LCuB88zlU-y2u4ckqe7vFjsu0hMfRsm_TVPVVBgZxhNNsUX-2SDSzztndlnRZe0-A451K6vS1FLJLcqApE"
+          });
+          console.log("FCM Token:", token);
+          document.getElementById("tokenDisplay").textContent = "FCM Token:\n" + token;
+          alert("Notifications enabled ✅");
+        } else {
+          alert("Notifications denied ❌");
+        }
+      });
+    };
   </script>
 </body>
 </html>
