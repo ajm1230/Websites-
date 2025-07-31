@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Registration System Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+            Email Registration System Dashboard
+        </h1>
+
+        <!-- Status Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-900">System Status</h3>
+                        <p id="system-status" class="text-green-600 font-medium">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Total Users</h3>
+                        <p id="total-users" class="text-blue-600 font-medium text-2xl">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Pending Signups</h3>
+                        <p id="pending-signups" class="text-orange-600 font-medium text-2xl">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions Panel -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">How to Use the Email Registration System</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">For Users:</h3>
+                    <ol class="list-decimal list-inside space-y-2 text-gray-600">
+                        <li>Send an email with subject containing "Signup" to the monitored email address</li>
+                        <li>Include your name in the email body or use a display name</li>
+                        <li>Wait for a password request email</li>
+                        <li>Reply with your desired password</li>
+                        <li>Receive confirmation email with your account details</li>
+                    </ol>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Email Formats:</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="bg-gray-50 p-3 rounded">
+                            <strong>Subject:</strong> Signup Request<br>
+                            <strong>Body:</strong> Hi, my name is John Doe. Please register me.
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <strong>Password Reply:</strong><br>
+                            Password: mySecurePassword123
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Tables -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Registered Users -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Registered Users</h2>
+                    <button onclick="refreshData()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm">
+                        Refresh
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Registered</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table" class="bg-white divide-y divide-gray-200">
+                            <!-- Users will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pending Signups -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Pending Password Setup</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Waiting Since</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-table" class="bg-white divide-y divide-gray-200">
+                            <!-- Pending signups will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center text-gray-500 text-sm">
+            <p>Last updated: <span id="last-updated">Never</span></p>
+        </div>
+    </div>
+
+    <script>
+        let refreshInterval;
+
+        async function fetchData() {
+            try {
+                const [statusResponse, usersResponse, pendingResponse] = await Promise.all([
+                    fetch('/api/status'),
+                    fetch('/api/users'),
+                    fetch('/api/pending')
+                ]);
+
+                const status = await statusResponse.json();
+                const users = await usersResponse.json();
+                const pending = await pendingResponse.json();
+
+                updateStatus(status);
+                updateUsersTable(users);
+                updatePendingTable(pending);
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('system-status').textContent = 'Error - Check Console';
+                document.getElementById('system-status').className = 'text-red-600 font-medium';
+            }
+        }
+
+        function updateStatus(status) {
+            document.getElementById('system-status').textContent = status.status === 'running' ? 'Running' : 'Stopped';
+            document.getElementById('system-status').className = status.status === 'running' ? 'text-green-600 font-medium' : 'text-red-600 font-medium';
+            document.getElementById('total-users').textContent = status.totalUsers;
+            document.getElementById('pending-signups').textContent = status.pendingSignups;
+        }
+
+        function updateUsersTable(users) {
+            const tbody = document.getElementById('users-table');
+            tbody.innerHTML = '';
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-4 text-center text-gray-500">No registered users yet</td></tr>';
+                return;
+            }
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-4 py-2 text-sm text-gray-900">${user.email}</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">${user.name}</td>
+                    <td class="px-4 py-2 text-sm text-gray-500">${new Date(user.registeredAt).toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updatePendingTable(pending) {
+            const tbody = document.getElementById('pending-table');
+            tbody.innerHTML = '';
+
+            if (pending.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-4 text-center text-gray-500">No pending signups</td></tr>';
+                return;
+            }
+
+            pending.forEach(signup => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-4 py-2 text-sm text-gray-900">${signup.email}</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">${signup.name}</td>
+                    <td class="px-4 py-2 text-sm text-gray-500">${new Date(signup.timestamp).toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateLastUpdated() {
+            document.getElementById('last-updated').textContent = new Date().toLocaleString();
+        }
+
+        function refreshData() {
+            fetchData();
+        }
+
+        function startAutoRefresh() {
+            refreshInterval = setInterval(fetchData, 5000); // Refresh every 5 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+            startAutoRefresh();
+        });
+
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                fetchData();
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        });
+    </script>
+</body>
+</html>
