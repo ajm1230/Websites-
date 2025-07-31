@@ -31,25 +31,34 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-// Email transporter setup
+// Gmail SMTP transporter setup
 const transporter = nodemailer.createTransporter({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false,
+  service: 'gmail', // Use Gmail service for better compatibility
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // Use STARTTLS
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    user: process.env.EMAIL_USER, // Your Gmail address
+    pass: process.env.EMAIL_PASS  // Your Gmail App Password
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
-// IMAP configuration for reading emails
+// Gmail IMAP configuration for reading emails
 const imapConfig = {
   user: process.env.EMAIL_USER,
   password: process.env.EMAIL_PASS,
-  host: process.env.IMAP_HOST,
-  port: process.env.IMAP_PORT,
+  host: 'imap.gmail.com',
+  port: 993,
   tls: true,
-  tlsOptions: { rejectUnauthorized: false }
+  tlsOptions: { 
+    rejectUnauthorized: false,
+    servername: 'imap.gmail.com'
+  },
+  authTimeout: 10000,
+  connTimeout: 10000
 };
 
 // Store pending registrations
@@ -210,8 +219,9 @@ function extractSenderName(fromField) {
 
 // Send password request email
 async function sendPasswordRequestEmail(email, name) {
+  const fromName = process.env.FROM_NAME || 'Registration System';
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: `${fromName} <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Set Your Password - Registration',
     text: `Hello ${name},
@@ -223,7 +233,8 @@ Your password should be at least 8 characters long for security.
 Simply reply with your password and we'll complete your registration.
 
 Best regards,
-Registration System`
+${fromName}`,
+    replyTo: process.env.REPLY_TO || process.env.EMAIL_USER
   };
   
   try {
@@ -236,10 +247,11 @@ Registration System`
 
 // Send confirmation email
 async function sendConfirmationEmail(email, name, password) {
+  const fromName = process.env.FROM_NAME || 'Registration System';
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: `${fromName} <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Registration Confirmed',
+    subject: 'Registration Confirmed ✅',
     text: `Hello ${name},
 
 Congratulations! You have been successfully signed up.
@@ -254,7 +266,8 @@ Please keep this information secure and consider changing your password after yo
 Welcome aboard!
 
 Best regards,
-Registration System`
+${fromName}`,
+    replyTo: process.env.REPLY_TO || process.env.EMAIL_USER
   };
   
   try {
@@ -267,11 +280,13 @@ Registration System`
 
 // Send general email reply
 async function sendEmailReply(email, subject, message) {
+  const fromName = process.env.FROM_NAME || 'Registration System';
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: `${fromName} <${process.env.EMAIL_USER}>`,
     to: email,
     subject: subject,
-    text: message
+    text: message,
+    replyTo: process.env.REPLY_TO || process.env.EMAIL_USER
   };
   
   try {
